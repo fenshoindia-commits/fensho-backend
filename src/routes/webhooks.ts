@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../prisma";
 import { webhookLimiter } from "../middleware/security";
-import { verifyFendexSignature, ShipmentStatus } from "../services/logisticsService";
+import { verifyFenshoSignature, ShipmentStatus } from "../services/logisticsService";
 import { verifyRazorpayWebhook } from "../services/paymentService";
 import { createAuditLog, createIdempotencyKey } from "../services/auditService";
 
@@ -53,21 +53,21 @@ router.post("/courier/:courierName", webhookLimiter, async (req: Request, res: R
     }
 });
 
-// FENDEX Webhook (Legacy legacy/backward compat)
-router.post("/fendex", webhookLimiter, async (req: Request, res: Response) => {
+// FENSHO Webhook (Legacy legacy/backward compat)
+router.post("/fensho", webhookLimiter, async (req: Request, res: Response) => {
     // Forwarding to the new dynamic route format for processing
-    req.params.courierName = "FENDEX";
+    req.params.courierName = "FENSHO";
     const { awb, status } = req.body;
 
-    // Signature check for FENDEX (as per old logic)
-    const signature = req.headers["x-fendex-signature"] as string;
+    // Signature check for FENSHO (as per old logic)
+    const signature = req.headers["x-fensho-signature"] as string;
     const payload = JSON.stringify(req.body);
-    if (!verifyFendexSignature(payload, signature)) {
+    if (!verifyFenshoSignature(payload, signature)) {
         return res.status(401).json({ error: "Invalid signature" });
     }
 
     // The dynamic router expects raw status names that match our enums
-    // (Existing fendex logic used ShipmentStatus which we'll assume is aligned)
+    // (Existing fensho logic used ShipmentStatus which we'll assume is aligned)
     return (router as any).handle(req, res); // Redirect internally or just duplicate logic
 });
 

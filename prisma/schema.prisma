@@ -223,7 +223,7 @@ model Shipment {
   id              String    @id @default(uuid())
   orderId         String    @unique
   order           Order     @relation(fields: [orderId], references: [id])
-  courierName     String    @default("FENDEX")
+  courierName     String    @default("FENSHO")
   courierCost     Float?
   courierPriority Int?
   serviceType     String?   // STANDARD | EXPRESS | SAME_DAY

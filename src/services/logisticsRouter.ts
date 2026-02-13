@@ -27,12 +27,12 @@ export class LogisticsRouterService {
         });
 
         // Selection priority:
-        // 1) If same state and PAN seller -> Prefer FENDEX
+        // 1) If same state and PAN seller -> Prefer FENSHO
         if (isPanSeller && isSameState) {
-            const fendexIndex = courierConfigs.findIndex(c => c.name === "FENDEX");
-            if (fendexIndex > -1) {
-                const [fendex] = courierConfigs.splice(fendexIndex, 1);
-                courierConfigs.unshift(fendex);
+            const fenshoIndex = courierConfigs.findIndex(c => c.name === "FENSHO");
+            if (fenshoIndex > -1) {
+                const [fensho] = courierConfigs.splice(fenshoIndex, 1);
+                courierConfigs.unshift(fensho);
             }
         }
 

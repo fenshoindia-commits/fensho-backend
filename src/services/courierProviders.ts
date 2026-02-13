@@ -11,12 +11,12 @@ export interface CourierProvider {
     trackShipment(awb: string): Promise<{ status: string }>;
 }
 
-export class FendexProvider implements CourierProvider {
-    name = "FENDEX";
+export class FenshoProvider implements CourierProvider {
+    name = "FENSHO";
     async checkServiceability(origin: string, destination: string) { return true; }
     async createShipment(order: any) {
         return {
-            awb: `FDX${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+            awb: `FSN${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
             cost: 40,
             status: "CREATED"
         };
@@ -78,7 +78,7 @@ export class GenericApiProvider implements CourierProvider {
 
 export const getCourierProvider = (name: string): CourierProvider => {
     switch (name.toUpperCase()) {
-        case "FENDEX": return new FendexProvider();
+        case "FENSHO": return new FenshoProvider();
         case "DELHIVERY": return new DelhiveryProvider();
         case "XPRESSBEES": return new XpressBeesProvider();
         case "SHADOWFAX": return new ShadowfaxProvider();

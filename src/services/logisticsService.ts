@@ -10,8 +10,8 @@ export enum ShipmentStatus {
 }
 
 export const createShipment = async (orderId: string, originState: string, destState: string) => {
-    const isMock = process.env.FENDEX_MODE === "mock" || !process.env.FENDEX_API_KEY;
-    const awb = `FDX${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const isMock = process.env.FENSHO_MODE === "mock" || !process.env.FENSHO_API_KEY;
+    const awb = `FSN${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     const shipment = await prisma.shipment.create({
         data: {
@@ -36,8 +36,8 @@ export const createShipment = async (orderId: string, originState: string, destS
 
 import crypto from "crypto";
 
-export const verifyFendexSignature = (payload: string, signature: string) => {
-    const secret = process.env.FENDEX_WEBHOOK_SECRET || "mock_secret";
+export const verifyFenshoSignature = (payload: string, signature: string) => {
+    const secret = process.env.FENSHO_WEBHOOK_SECRET || "mock_secret";
     const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
     return expected === signature;
 };

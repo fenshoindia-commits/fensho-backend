@@ -106,7 +106,7 @@ router.post("/shipments/:awb/status", authenticate, authorize(["ADMIN"]), async 
     const shipment = await prisma.shipment.findUnique({ where: { awb } });
     if (!shipment) return res.status(404).json({ error: "Shipment not found" });
 
-    // In a real mock, we'd call the /webhooks/fendex endpoint internally or mirror logic
+    // In a real mock, we'd call the /webhooks/fensho endpoint internally or mirror logic
     // For simplicity, we just trigger the status update logic
     const updatedOrder = await prisma.order.update({
         where: { id: shipment.orderId },
