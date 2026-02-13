@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { LoginSchema, VerifyOtpSchema } from "@fensho/shared";
+import { LoginSchema, VerifyOtpSchema } from "../types/shared";
 import prisma from "../prisma";
 import jwt from "jsonwebtoken";
 

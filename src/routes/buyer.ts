@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth";
 import prisma from "../prisma";
-import { BuyerProfileSchema, AddressSchema } from "@fensho/shared";
+import { BuyerProfileSchema, AddressSchema } from "../types/shared";
 import { LogisticsRouterService } from "../services/logisticsRouter";
 import { createRazorpayOrder, verifyRazorpaySignature } from "../services/paymentService";
 import { paymentLimiter } from "../middleware/security";

@@ -1,6 +1,6 @@
 import { Router, Request } from "express";
 import { authenticate, authorize } from "../middleware/auth";
-import { SellerKycSchema } from "@fensho/shared";
+import { SellerKycSchema } from "../types/shared";
 import prisma from "../prisma";
 import multer from "multer";
 import path from "path";

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth";
-import { ProductCreateSchema } from "@fensho/shared";
+import { ProductCreateSchema } from "../types/shared";
 import prisma from "../prisma";
 
 const router = Router();
