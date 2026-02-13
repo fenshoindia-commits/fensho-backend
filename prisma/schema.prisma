@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SELLER
+  BUYER
+}
+
+enum SellerType {
+  PAN_ONLY
+  GST
+}
+
+enum KycStatus {
+  DRAFT
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum DocumentType {
+  PAN_CARD
+  CANCELLED_CHEQUE
+  GST_CERT
+}
+
+enum PaymentMethod {
+  COD
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PLACED
+  PENDING_LOGISTICS
+  SHIPPED
+  DELIVERED
+  RTO
+  CANCELLED
+}
+
+enum RiskEventType {
+  CANCEL
+  RTO
+  DELIVERED
+  COD_BLOCK
+  MANUAL_OVERRIDE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  mobile    String   @unique
+  role      Role     @default(BUYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  state     String?  // Auto-detected or manually selected state
+
+  sellerProfile SellerProfile?
+  buyerProfile  BuyerProfile?
+  addresses     Address[]
+  orders        Order[]
+  riskEvents    RiskEvent[]
+  wallet        SellerWallet?
+  ledgerEntries LedgerEntry[]
+  auditLogs     AuditLog[]
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  mobile    String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([mobile])
+}
+
+model SellerProfile {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id])
+  storeName   String?
+  type        SellerType?
+  panNumber   String?
+  gstNumber   String?
+  isGstSeller Boolean    @default(false)
+  commissionRate Float   @default(0.10)
+  tdsPercentage  Float   @default(0.00)
+  bankAccount String?
+  ifscCode    String?
+  holderName  String?
+  state       String? // Important for PAN_ONLY logic
+  kycStatus   KycStatus  @default(DRAFT)
+  rejectionReason String?
+  
+  documents   Document[]
+  products    Product[]
+}
+
+model BuyerProfile {
+  id      String @id @default(uuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id])
+  name    String?
+
+  riskScore           Int      @default(0)
+  codAllowed         Boolean  @default(true)
+  codLimitAmount     Int      @default(2000)
+  dailyCodOrdersLimit Int      @default(2)
+  lifetimeOrders      Int      @default(0)
+  deliveredOrders     Int      @default(0)
+  rtoOrders           Int      @default(0)
+  cancelledOrders     Int      @default(0)
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  line1     String
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean  @default(false)
+}
+
+model Document {
+  id              String       @id @default(uuid())
+  sellerProfileId String
+  sellerProfile   SellerProfile @relation(fields: [sellerProfileId], references: [id])
+  type            DocumentType
+  url             String
+  status          String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  uploadedAt      DateTime     @default(now())
+}
+
+model Product {
+  id              String        @id @default(uuid())
+  sku             String?       @unique
+  sellerProfileId String
+  sellerProfile   SellerProfile @relation(fields: [sellerProfileId], references: [id])
+  title           String
+  description     String?
+  price           Decimal
+  imageUrl        String?
+  isActive        Boolean       @default(true)
+  
+  // Shipping Metadata
+  weightGrams      Float?
+  lengthCm         Float?
+  widthCm          Float?
+  heightCm         Float?
+  volumetricWeight Float?
+  isFragile        Boolean       @default(false)
+  isHazardous      Boolean       @default(false)
+  categoryType     String?       // GENERAL | ELECTRONICS | FASHION | LIQUID | etc
+  codAllowed       Boolean       @default(true)
+  maxCodAmount     Float?
+  shippingClass    String?       // LIGHT | MEDIUM | HEAVY | BULKY
+  hsnCode          String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  orderItems      OrderItem[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  buyerId     String
+  buyer       User        @relation(fields: [buyerId], references: [id])
+  totalAmount Decimal
+  status      String      @default("PENDING") // Legacy
+  orderStatus OrderStatus @default(PLACED)
+  paymentMethod PaymentMethod @default(ONLINE)
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  
+  buyerState      String?
+  sellerTypeSnapshot String?
+  riskSnapshot    Int?
+  codBlockedReason String?
+
+  commissionAmount Float?
+  tdsAmount        Float?
+  sellerEarning    Float?
+  settlementEligibleAt DateTime?
+  settled          Boolean @default(false)
+  codReconciled    Boolean @default(false)
+
+  // Razorpay
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
+  refundAmount      Float?  @default(0)
+
+  // Logistics
+  trackingAwb     String? @unique
+  logisticsStatus String?
+
+  items           OrderItem[]
+  shipment        Shipment?
+  paymentEvents   PaymentEvent[]
+
+  @@index([buyerId])
+  @@index([orderStatus, createdAt])
+}
+
+model Shipment {
+  id              String    @id @default(uuid())
+  orderId         String    @unique
+  order           Order     @relation(fields: [orderId], references: [id])
+  courierName     String    @default("FENDEX")
+  courierCost     Float?
+  courierPriority Int?
+  serviceType     String?   // STANDARD | EXPRESS | SAME_DAY
+  isCodSupported  Boolean?
+  failureReason   String?
+  awb             String?   @unique
+  status          String    // CREATED | PICKED | IN_TRANSIT | DELIVERED | RTO | CANCELLED
+  originState     String?
+  destState       String?
+  lastEventAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([awb])
+}
+
+model CourierConfig {
+  id              String   @id @default(uuid())
+  name            String   @unique // FENDEX, DELHIVERY, etc.
+  baseUrl         String?
+  apiKey          String?
+  priority        Int      @default(0)
+  isActive        Boolean  @default(true)
+  supportsCOD     Boolean  @default(true)
+  maxCodAmount    Float?
+  createdAt       DateTime @default(now())
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal
+
+  // Shipping Snaphots
+  weight           Float?
+  volumetricWeight Float?
+  shippingClass    String?
+  isFragile        Boolean @default(false)
+}
+
+model RiskEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      RiskEventType
+  points    Int
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model SellerWallet {
+  id               String   @id @default(uuid())
+  sellerId         String   @unique
+  user             User     @relation(fields: [sellerId], references: [id])
+  availableBalance Float    @default(0)
+  holdBalance      Float    @default(0)
+  totalSales       Float    @default(0)
+  totalCommission  Float    @default(0)
+  totalPayout      Float    @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model LedgerEntry {
+  id            String   @id @default(uuid())
+  sellerId      String
+  user          User     @relation(fields: [sellerId], references: [id])
+  orderId       String?
+  type          String   // SALE | COMMISSION | TDS | HOLD | RELEASE | PAYOUT | REFUND_REVERSAL
+  amount        Float
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([sellerId, createdAt])
+}
+
+model PaymentEvent {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  type      String   // PAYMENT_SUCCESS | PAYMENT_FAILED | REFUND | WEBHOOK
+  rawData   Json
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model IdempotencyKey {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  scope     String   // PAYMENT_CAPTURED | DELIVERY_EVENT | REFUND_EVENT
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  user      User?    @relation(fields: [actorId], references: [id])
+  actorRole String?
+  action    String   // ADMIN_REFUND, ADMIN_PAYOUT, COD_RELEASE, WEBHOOK_RECEIVED, LOGIN_FAIL, OTP_SENT, etc.
+  targetId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
